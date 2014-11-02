@@ -2,7 +2,7 @@
 require "logstash/filters/base"
 require "logstash/namespace"
 require "logstash/environment"
-require "logstash/patters/core"
+require "logstash/patterns/core"
 require "set"
 #
 # This filter will collapse multiline messages from a single source into one Logstash event.
