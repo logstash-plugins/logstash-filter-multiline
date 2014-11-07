@@ -11,10 +11,10 @@ require "set"
 # from files into a single event. For example - joining java exception and
 # stacktrace messages into a single event.
 #
-# NOTE: This filter will not work with multiple worker threads "-w 2" on the logstash command line.
+# NOTE: This filter will not work with multiple worker threads `-w 2` on the logstash command line.
 #
 # The config looks like this:
-#
+# [source,ruby]
 #     filter {
 #       multiline {
 #         type => "type"
@@ -27,16 +27,16 @@ require "set"
 # The `pattern` should be a regexp which matches what you believe to be an indicator
 # that the field is part of an event consisting of multiple lines of log data.
 #
-# The `what` must be "previous" or "next" and indicates the relation
+# The `what` must be `previous` or `next` and indicates the relation
 # to the multi-line event.
 #
-# The `negate` can be "true" or "false" (defaults to false). If "true", a
+# The `negate` can be `true` or `false` (defaults to `false`). If `true`, a
 # message not matching the pattern will constitute a match of the multiline
 # filter and the `what` will be applied. (vice-versa is also true)
 #
 # For example, Java stack traces are multiline and usually have the message
 # starting at the far-left, with each subsequent line indented. Do this:
-#
+# [source,ruby]
 #     filter {
 #       multiline {
 #         type => "somefiletype"
@@ -48,7 +48,7 @@ require "set"
 # This says that any line starting with whitespace belongs to the previous line.
 #
 # Another example is C line continuations (backslash). Here's how to do that:
-#
+# [source,ruby]
 #     filter {
 #       multiline {
 #         type => "somefiletype "
@@ -85,7 +85,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # reconnects (due to error or client restart), then logstash will identify
   # the new connection as a new stream and break any multiline goodness that
   # may have occurred between the old and new connection. To solve this use
-  # case, you can use "%{@source_host}.%{@type}" instead.
+  # case, you can use `%{@source_host}.%{@type}` instead.
   config :stream_identity , :validate => :string, :default => "%{host}.%{path}.%{type}"
 
   # Logstash ships by default with a bunch of patterns, so you don't
@@ -93,11 +93,11 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # patterns.
   #
   # Pattern files are plain text with format:
-  #
+  # [source,ruby]
   #     NAME PATTERN
   #
   # For example:
-  #
+  # [source,ruby]
   #     NUMBER \d+
   config :patterns_dir, :validate => :array, :default => []
 
