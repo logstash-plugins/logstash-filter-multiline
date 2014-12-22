@@ -87,6 +87,7 @@ describe LogStash::Filters::Multiline do
     end
   end
 
+
   describe "multiline add/remove tags and fields only when matched" do
     config <<-CONFIG
       filter {
@@ -108,9 +109,9 @@ describe LogStash::Filters::Multiline do
       insist { subject.size } == 2
 
       subject.each do |s|
-        insist { s["tags"].include?("nope")  } == false
-        insist { s["tags"].include?("dummy") } == true
-        insist { s.include?("dummy2") } == false
+        insist { s["tags"].include?("nope")  } == true
+        insist { s["tags"].include?("dummy") } == false
+        insist { s.include?("dummy2") } == true
       end
     end
   end
@@ -121,7 +122,6 @@ describe LogStash::Filters::Multiline do
         multiline {
           pattern => "^\s"
           what => "next"
-          add_tag => ["multi"]
         }
       }
     CONFIG
@@ -138,7 +138,6 @@ describe LogStash::Filters::Multiline do
         multiline {
           pattern => "^\s"
           what => "next"
-          add_tag => ["multi"]
         }
       }
     CONFIG
@@ -150,4 +149,100 @@ describe LogStash::Filters::Multiline do
       insist { subject[1]["message"] } == "  match2\nnomatch2"
     end
   end
+
+  describe "keep duplicates by default on message field" do
+    config <<-CONFIG
+      filter {
+        multiline {
+          pattern => "^\s"
+          what => "next"
+        }
+      }
+    CONFIG
+
+    sample ["  match1", "  match1", "nomatch1", "  1match2", "  2match2", "  1match2", "nomatch2"] do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["message"] } == "  match1\n  match1\nnomatch1"
+      insist { subject[1]["message"] } == "  1match2\n  2match2\n  1match2\nnomatch2"
+    end
+  end
+
+  describe "remove duplicates using :allow_duplicates => false on message field" do
+    config <<-CONFIG
+      filter {
+        multiline {
+          allow_duplicates => false
+          pattern => "^\s"
+          what => "next"
+        }
+      }
+    CONFIG
+
+    sample ["  match1", "  match1", "nomatch1", "  1match2", "  2match2", "  1match2", "nomatch2"] do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["message"] } == "  match1\nnomatch1"
+      insist { subject[1]["message"] } == "  1match2\n  2match2\nnomatch2"
+    end
+  end
+
+  describe "keep duplicates only on @source field" do
+    config <<-CONFIG
+      filter {
+        multiline {
+          source => "foo"
+          pattern => "^\s"
+          what => "next"
+        }
+      }
+    CONFIG
+
+    sample [
+      {"message" => "bar", "foo" => "  match1"},
+      {"message" => "bar", "foo" => "  match1"},
+      {"message" => "baz", "foo" => "nomatch1"},
+      {"foo" => "  1match2"},
+      {"foo" => "  2match2"},
+      {"foo" => "  1match2"},
+      {"foo" => "nomatch2"}
+    ] do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["foo"] } == "  match1\n  match1\nnomatch1"
+      insist { subject[0]["message"] } == ["bar", "baz"]
+      insist { subject[1]["foo"] } == "  1match2\n  2match2\n  1match2\nnomatch2"
+    end
+  end
+
+  describe "fix dropped duplicated lines" do
+    # as reported in https://github.com/logstash-plugins/logstash-filter-multiline/issues/3
+
+    config <<-CONFIG
+      filter {
+        multiline {
+          pattern => "^START"
+          what => "previous"
+          negate=> true
+        }
+      }
+    CONFIG
+
+    messages = [
+      "START",
+      "<Tag1 Id=\"1\">",
+        "<Tag2>Foo</Tag2>",
+      "</Tag1>",
+      "<Tag1 Id=\"2\">",
+        "<Tag2>Foo</Tag2>",
+      "</Tag1>",
+      "START",
+    ]
+    sample messages do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["message"] } == messages[0..-2].join("\n")
+    end
+  end
+
 end

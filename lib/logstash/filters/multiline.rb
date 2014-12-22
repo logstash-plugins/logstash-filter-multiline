@@ -64,6 +64,12 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   config_name "multiline"
 
+  # The field name to execute the pattern match on.
+  config :source, :validate => :string, :default => "message"
+
+  # Allow duplcate values on the source field.
+  config :allow_duplicates, :validate => :boolean, :default => true
+
   # The regular expression to match.
   config :pattern, :validate => :string, :required => true
 
@@ -108,7 +114,6 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # Optional.
   config :periodic_flush, :validate => :boolean, :default => true
 
-
   # Register default pattern paths
   @@patterns_path = Set.new
   @@patterns_path += [LogStash::Patterns::Core.path]
@@ -136,10 +141,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
     @patterns_dir = @@patterns_path.to_a + @patterns_dir
     @patterns_dir.each do |path|
-      if File.directory?(path)
-        path = File.join(path, "*")
-      end
-
+      path = File.join(path, "*") if File.directory?(path)
       Dir.glob(path).each do |file|
         @logger.info("Grok loading patterns from file", :path => file)
         @grok.add_patterns_from_file(file)
@@ -165,17 +167,14 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   def filter(event)
     return unless filter?(event)
 
-    match = event["message"].is_a?(Array) ? @grok.match(event["message"].first) : @grok.match(event["message"])
-    match = (match and !@negate) || (!match and @negate) # add negate option
+    match = event[@source].is_a?(Array) ? @grok.match(event[@source].first) : @grok.match(event[@source])
+    match = (match && !@negate) || (!match && @negate) # add negate option
 
-    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event["message"], :match => match, :negate => @negate)
+    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event[@source], :match => match, :negate => @negate)
 
     multiline_filter!(event, match)
 
-    unless event.cancelled?
-      collapse_event!(event)
-      filter_matched(event) if match
-    end
+    filter_matched(event) unless event.cancelled?
   end # def filter
 
   # flush any pending messages
@@ -185,25 +184,28 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # @return [Array<LogStash::Event>] list of flushed events
   public
   def flush(options = {})
-    expired = nil
-
     # note that thread safety concerns are not necessary here because the multiline filter
-    # is not thread safe thus cannot be run in multiple folterworker threads and flushing
+    # is not thread safe thus cannot be run in multiple filterworker threads and flushing
     # is called by the same thread
 
     # select all expired events from the @pending hash into a new expired hash
     # if :final flush then select all events
-    expired = @pending.inject({}) do |r, (key, event)|
-      age = Time.now - Array(event["@timestamp"]).first.time
-      r[key] = event if (age >= @max_age) || options[:final]
-      r
+    expired = @pending.inject({}) do |result, (key, events)|
+      unless events.empty?
+        age = Time.now - events.first["@timestamp"].time
+        result[key] = events if (age >= @max_age) || options[:final]
+      end
+      result
     end
 
-    # delete expired items from @pending hash
-    expired.each{|key, event| @pending.delete(key)}
-
-    # return list of uncancelled and collapsed expired events
-    expired.map{|key, event| event.uncancel; collapse_event!(event)}
+    # return list of uncancelled expired events
+    expired.map do |key, events|
+      @pending.delete(key)
+      event = merge(events)
+      event.uncancel
+      filter_matched(event)
+      event
+    end
   end # def flush
 
   public
@@ -215,29 +217,24 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   def previous_filter!(event, match)
     key = event.sprintf(@stream_identity)
-
-    pending = @pending[key]
+    pending = @pending[key] ||= []
 
     if match
+      # previous previous line is part of this event. append it to the event and cancel it
       event.tag(MULTILINE_TAG)
-      # previous previous line is part of this event.
-      # append it to the event and cancel it
-      if pending
-        pending.append(event)
-      else
-        @pending[key] = event
-      end
+      pending << event
       event.cancel
     else
-      # this line is not part of the previous event
-      # if we have a pending event, it's done, send it.
+      # this line is not part of the previous event if we have a pending event, it's done, send it.
       # put the current event into pending
-      if pending
+      unless pending.empty?
         tmp = event.to_hash
-        event.overwrite(pending)
-        @pending[key] = LogStash::Event.new(tmp)
+        event.overwrite(merge(pending))
+        pending.clear # avoid array creation
+        pending << LogStash::Event.new(tmp)
       else
-        @pending[key] = event
+        pending.clear # avoid array creation
+        pending << event
         event.cancel
       end
     end # if match
@@ -245,35 +242,66 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   def next_filter!(event, match)
     key = event.sprintf(@stream_identity)
-
-    # protect @pending for race condition between the flush thread and the worker thread
-    pending = @pending[key]
+    pending = @pending[key] ||= []
 
     if match
+      # this line is part of a multiline event, the next line will be part, too, put it into pending.
       event.tag(MULTILINE_TAG)
-      # this line is part of a multiline event, the next
-      # line will be part, too, put it into pending.
-      if pending
-        pending.append(event)
-      else
-        @pending[key] = event
-      end
+      pending << event
       event.cancel
     else
-      # if we have something in pending, join it with this message
-      # and send it. otherwise, this is a new message and not part of
-      # multiline, send it.
-      if pending
-        pending.append(event)
-        event.overwrite(pending)
-        @pending.delete(key)
+      # if we have something in pending, join it with this message and send it.
+      # otherwise, this is a new message and not part of multiline, send it.
+      unless pending.empty?
+        event.overwrite(merge(pending << event))
+        pending.clear
       end
     end # if match
   end
 
-  def collapse_event!(event)
-    event["message"] = event["message"].join("\n") if event["message"].is_a?(Array)
-    event.timestamp = event.timestamp.first if event.timestamp.is_a?(Array)
-    event
+  # merge a list of events. @timestamp for the resulting merged event will be from
+  # the "oldest" (events.first). all @source fields will be deduplicated depending
+  # on @allow_duplicates and joined with \n. all other fields will be deduplicated.
+  # @param events [Array<Event>] the list of events to merge
+  # @return [Event] the resulting merged event
+  def merge(events)
+    dups_key = @allow_duplicates ? @source : nil
+
+    data = events.inject({}) do |result, event|
+      self.class.event_hash_merge!(result, event.to_hash_with_metadata, dups_key)
+    end
+
+    # merged event @timestamp is from first event in sequence
+    data["@timestamp"] = Array(data["@timestamp"]).first
+    # collapse all @source field values
+    data[@source] = Array(data[@source]).join("\n")
+    LogStash::Event.new(data)
   end
+
+  # merge two events data hash, src into dst and handle duplicate values for dups_key
+  # @param dst [Hash] the event to merge into, dst will be mutated
+  # @param src [Hash] the event to merge in dst
+  # @param dups_key [String] the field key to keep duplicate values
+  # @return [Hash] mutated dst
+  def self.event_hash_merge!(dst, src, dups_key = nil)
+    src.each do |key, svalue|
+      dst[key] = if dst.has_key?(key)
+        dvalue = dst[key]
+
+        if dvalue.is_a?(Hash) && svalue.is_a?(Hash)
+          event_hash_merge!(dvalue, svalue, dups_key)
+        else
+          v = (dups_key == key) ? Array(dvalue) + Array(svalue) : Array(dvalue) | Array(svalue)
+          # the v result is always an Array, if none of the fields were arrays and there is a
+          # single value in the array, return the value, not the array
+          dvalue.is_a?(Array) || svalue.is_a?(Array) ? v : (v.size == 1 ? v.first : v)
+        end
+      else
+        svalue
+      end
+    end
+
+    dst
+  end # def self.hash_merge
+
 end # class LogStash::Filters::Multiline
