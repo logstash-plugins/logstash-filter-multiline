@@ -110,7 +110,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   config :periodic_flush, :validate => :boolean, :default => true
 
 
-  # Detect if we are running from a jarfile, pick the right path.
+  # Register default pattern paths
   @@patterns_path = Set.new
   @@patterns_path += [LogStash::Patterns::Core.path]
 
