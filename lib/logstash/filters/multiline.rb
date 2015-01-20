@@ -63,7 +63,6 @@ require "set"
 class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   config_name "multiline"
-  milestone 3
 
   # The regular expression to match.
   config :pattern, :validate => :string, :required => true
