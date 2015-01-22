@@ -245,4 +245,61 @@ describe LogStash::Filters::Multiline do
     end
   end
 
+
+ describe "integrations" do
+
+    it "should merge messages arrays as Java ArrayList from json codec using JrJackson" do
+
+      config = <<-CONFIG
+        input {
+          generator {
+            lines => [
+              '{"message": ["first", ">>second"]}',
+              '{"message": [">>third", ">>fourth"]}'
+            ]
+            count => 1
+            codec => "json"
+          }
+        }
+      CONFIG
+
+      # first generate events from generator input with json codec with array messages
+      # so that JrJackson generates Java ArrayList objects
+
+      events = []
+      queue = Queue.new
+      pipeline = LogStash::Pipeline.new(config)
+      pipeline.instance_eval do
+        @output_func = lambda { |event| queue << event }
+      end
+      runner = Thread.new { pipeline.run }
+      sleep 0.1 while !pipeline.ready?
+
+      events << queue.pop
+      events << queue.pop
+
+      pipeline.shutdown
+      runner.join
+
+      expect(events.size).to eq(2)
+
+      # next run these 2 events into the multiline filter.
+      # before v0.1.4 this would trigger NoMethodError: undefined method `|' for #<Java::JavaUtil::ArrayList
+      # we don't want to run this filter through the pipeline because the filter worker rescues
+      # all exceptions.
+
+      filter = LogStash::Filters::Multiline.new({"pattern" => "^>>.*", "what" => "previous", "periodic_flush" => false })
+      filter.register
+
+      results = []
+      events.each do |event|
+        filter.filter(event) { |new_event| results << new_event }
+        results.unshift(event) unless event.cancelled?
+      end
+      results += filter.flush(:final => true)
+
+      expect(results[0]["message"]).to eq("first\n>>second\n>>third\n>>fourth")
+    end
+  end
+
 end
