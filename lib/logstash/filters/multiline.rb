@@ -208,11 +208,6 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
     end
   end # def flush
 
-  public
-  def teardown
-    # nothing to do
-  end
-
   private
 
   def previous_filter!(event, match)
