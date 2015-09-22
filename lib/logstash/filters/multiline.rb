@@ -209,7 +209,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   end # def flush
 
   public
-  def teardown
+  def close
     # nothing to do
   end
 
