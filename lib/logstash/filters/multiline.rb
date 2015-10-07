@@ -165,7 +165,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   public
   def filter(event)
-    return unless filter?(event)
+    
 
     match = event[@source].is_a?(Array) ? @grok.match(event[@source].first) : @grok.match(event[@source])
     match = (match && !@negate) || (!match && @negate) # add negate option
