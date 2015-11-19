@@ -228,7 +228,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       # this line is not part of the previous event if we have a pending event, it's done, send it.
       # put the current event into pending
       unless pending.empty?
-        tmp = event.to_hash
+        tmp = event.to_hash_with_metadata
         event.overwrite(merge(pending))
         pending.clear # avoid array creation
         pending << LogStash::Event.new(tmp)
