@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-filter-multiline'
-  s.version         = '1.0.0'
+  s.version         = '1.1.0'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "This filter will collapse multiline messages from a single source into one Logstash event."
   s.description     = "This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program"
@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.metadata = { "logstash_plugin" => "true", "logstash_group" => "filter" }
 
   # Gem dependencies
-  s.add_runtime_dependency "logstash-core", '>= 1.4.0', '< 2.0.0'
+  s.add_runtime_dependency "logstash-core", '>= 1.4.0', '< 2.0.0.alpha0'
   s.add_runtime_dependency 'logstash-patterns-core'
   s.add_runtime_dependency 'logstash-filter-mutate'
   s.add_runtime_dependency 'jls-grok', '~> 0.11.0'
