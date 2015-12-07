@@ -245,4 +245,47 @@ describe LogStash::Filters::Multiline do
     end
   end
 
+
+  describe "keeps metadata fields after two consecutive non multline lines" do
+    config <<-CONFIG
+    filter {
+       mutate { add_field => { "[@metadata][index]" => "logstash-2015.11.19" } }
+       multiline {
+          pattern => "^%{NUMBER}"
+          what => "previous"
+      }
+       mutate { add_field => { "[@metadata][type]" => "foo" } }
+    }
+    CONFIG
+
+    sample ["line1", "line2"] do
+      expect(subject).to be_a(Array)
+      expect(subject[0]["@metadata"]).to include("index"=>"logstash-2015.11.19")
+      expect(subject[1]["@metadata"]).to include("index"=>"logstash-2015.11.19")
+      expect(subject[0]["@metadata"]).to include("type"=>"foo")
+      expect(subject[1]["@metadata"]).to include("type"=>"foo")
+    end
+  end
+
+  describe "keeps metadata fields after two consecutive non multline lines" do
+    config <<-CONFIG
+    filter {
+       mutate { add_field => { "[@metadata][index]" => "logstash-2015.11.19" } }
+       multiline {
+          pattern => "^%{NUMBER}"
+          what => "next"
+      }
+       mutate { add_field => { "[@metadata][type]" => "foo" } }
+    }
+    CONFIG
+
+    sample ["line1", "line2"] do
+      expect(subject).to be_a(Array)
+      expect(subject[0]["@metadata"]).to include("index"=>"logstash-2015.11.19")
+      expect(subject[1]["@metadata"]).to include("index"=>"logstash-2015.11.19")
+      expect(subject[0]["@metadata"]).to include("type"=>"foo")
+      expect(subject[1]["@metadata"]).to include("type"=>"foo")
+    end
+  end
+
 end
