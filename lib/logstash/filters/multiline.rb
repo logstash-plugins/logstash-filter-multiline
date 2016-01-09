@@ -17,7 +17,6 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "type"
 #         pattern => "pattern, a regexp"
 #         negate => boolean
 #         what => "previous" or "next"
@@ -39,7 +38,6 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "somefiletype"
 #         pattern => "^\s"
 #         what => "previous"
 #       }
@@ -51,7 +49,6 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "somefiletype "
 #         pattern => "\\$"
 #         what => "next"
 #       }
