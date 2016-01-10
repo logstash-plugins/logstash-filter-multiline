@@ -23,8 +23,9 @@ require "set"
 #       }
 #     }
 #
-# The `pattern` should be a regexp which matches what you believe to be an indicator
-# that the field is part of an event consisting of multiple lines of log data.
+# The `pattern` should be a regexp (<<plugins-filters-grok,grok>> patterns are
+# supported) which matches what you believe to be an indicator that the field
+# is part of an event consisting of multiple lines of log data.
 #
 # The `what` must be `previous` or `next` and indicates the relation
 # to the multi-line event.
@@ -67,7 +68,9 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # Allow duplcate values on the source field.
   config :allow_duplicates, :validate => :boolean, :default => true
 
-  # The regular expression to match.
+  # The expression to match. The same matching engine as the
+  # <<plugins-filters-grok,grok filter>> is used, so the expression can contain
+  # a plain regular expression or one that also contains grok patterns.
   config :pattern, :validate => :string, :required => true
 
   # If the pattern matched, does event belong to the next or previous event?
