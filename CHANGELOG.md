@@ -1,3 +1,5 @@
+# 2.0.4
+  - New dependency requirements for logstash-core for the 5.0 release
 ## 2.0.3
  - Fix metadata handling, fixes #19 and #22
 ## 2.0.0
