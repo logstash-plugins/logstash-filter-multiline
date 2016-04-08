@@ -1,7 +1,6 @@
 # Logstash Plugin
 
-[![Build
-Status](http://build-eu-00.elastic.co/view/LS%20Plugins/view/LS%20Filters/job/logstash-plugin-filter-multiline-unit/badge/icon)](http://build-eu-00.elastic.co/view/LS%20Plugins/view/LS%20Filters/job/logstash-plugin-filter-multiline-unit/)
+[![Travis Build Status](https://travis-ci.org/logstash-plugins/logstash-filter-multiline.svg)](https://travis-ci.org/logstash-plugins/logstash-filter-multiline)
 
 This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
