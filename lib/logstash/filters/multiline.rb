@@ -165,12 +165,10 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   public
   def filter(event)
-    
-
-    match = event[@source].is_a?(Array) ? @grok.match(event[@source].first) : @grok.match(event[@source])
+    match = event.get(@source).is_a?(Array) ? @grok.match(event.get(@source).first) : @grok.match(event.get(@source))
     match = (match && !@negate) || (!match && @negate) # add negate option
 
-    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event[@source], :match => match, :negate => @negate)
+    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event.get(@source), :match => match, :negate => @negate)
 
     multiline_filter!(event, match)
 
@@ -192,7 +190,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
     # if :final flush then select all events
     expired = @pending.inject({}) do |result, (key, events)|
       unless events.empty?
-        age = Time.now - events.first["@timestamp"].time
+        age = Time.now - events.first.get("@timestamp").time
         result[key] = events if (age >= @max_age) || options[:final]
       end
       result
@@ -231,7 +229,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
         tmp           = event.to_hash_with_metadata
         merged_events = merge(pending)
         event.overwrite(merged_events)
-        event["@metadata"] = merged_events["@metadata"] # Override does not copy the metadata
+        event.set("@metadata", merged_events.get("@metadata")) # Override does not copy the metadata
         pending.clear # avoid array creation
         pending << LogStash::Event.new(tmp)
       else
@@ -257,7 +255,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       unless pending.empty?
         merged_events = merge(pending << event)
         event.overwrite(merged_events)
-        event["@metadata"] = merged_events["@metadata"] # Override does not copy the metadata
+        event.set("@metadata", merged_events.get("@metadata")) # Override does not copy the metadata
         pending.clear
       end
     end # if match

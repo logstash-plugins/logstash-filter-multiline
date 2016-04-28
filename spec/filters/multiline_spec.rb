@@ -19,8 +19,8 @@ describe LogStash::Filters::Multiline do
     sample [ "hello world", "   second line", "another first line" ] do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["message"] } == "hello world\n   second line"
-      insist { subject[1]["message"] } == "another first line"
+      insist { subject[0].get("message") } == "hello world\n   second line"
+      insist { subject[1].get("message") } == "another first line"
     end
   end
 
@@ -36,7 +36,7 @@ describe LogStash::Filters::Multiline do
     CONFIG
 
     sample [ "120913 12:04:33 first line", "second line", "third line" ] do
-      insist { subject["message"] } ==  "120913 12:04:33 first line\nsecond line\nthird line"
+      insist { subject.get("message") } ==  "120913 12:04:33 first line\nsecond line\nthird line"
     end
   end
 
@@ -79,10 +79,10 @@ describe LogStash::Filters::Multiline do
       insist { subject.size } == count
 
       subject.each_with_index do |event, i|
-        insist { event["type"] == event["host"] } == true
-        stream = event["type"]
-        insist { event["message"].split("\n").first } =~ /hello world /
-        insist { event["message"].scan(/stream\d/).all?{|word| word == stream} } == true
+        insist { event.get("type") == event.get("host") } == true
+        stream = event.get("type")
+        insist { event.get("message").split("\n").first } =~ /hello world /
+        insist { event.get("message").scan(/stream\d/).all?{|word| word == stream} } == true
       end
     end
   end
@@ -109,8 +109,8 @@ describe LogStash::Filters::Multiline do
       insist { subject.size } == 2
 
       subject.each do |s|
-        insist { s["tags"].include?("nope")  } == true
-        insist { s["tags"].include?("dummy") } == false
+        insist { s.get("tags").include?("nope")  } == true
+        insist { s.get("tags").include?("dummy") } == false
         insist { s.include?("dummy2") } == true
       end
     end
@@ -128,7 +128,7 @@ describe LogStash::Filters::Multiline do
 
     sample [ "  match", "nomatch" ] do
       expect(subject).to be_a(LogStash::Event)
-      insist { subject["message"] } == "  match\nnomatch"
+      insist { subject.get("message") } == "  match\nnomatch"
     end
   end
 
@@ -145,8 +145,8 @@ describe LogStash::Filters::Multiline do
     sample ["  match1", "nomatch1", "  match2", "nomatch2"] do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["message"] } == "  match1\nnomatch1"
-      insist { subject[1]["message"] } == "  match2\nnomatch2"
+      insist { subject[0].get("message") } == "  match1\nnomatch1"
+      insist { subject[1].get("message") } == "  match2\nnomatch2"
     end
   end
 
@@ -163,8 +163,8 @@ describe LogStash::Filters::Multiline do
     sample ["  match1", "  match1", "nomatch1", "  1match2", "  2match2", "  1match2", "nomatch2"] do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["message"] } == "  match1\n  match1\nnomatch1"
-      insist { subject[1]["message"] } == "  1match2\n  2match2\n  1match2\nnomatch2"
+      insist { subject[0].get("message") } == "  match1\n  match1\nnomatch1"
+      insist { subject[1].get("message") } == "  1match2\n  2match2\n  1match2\nnomatch2"
     end
   end
 
@@ -182,8 +182,8 @@ describe LogStash::Filters::Multiline do
     sample ["  match1", "  match1", "nomatch1", "  1match2", "  2match2", "  1match2", "nomatch2"] do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["message"] } == "  match1\nnomatch1"
-      insist { subject[1]["message"] } == "  1match2\n  2match2\nnomatch2"
+      insist { subject[0].get("message") } == "  match1\nnomatch1"
+      insist { subject[1].get("message") } == "  1match2\n  2match2\nnomatch2"
     end
   end
 
@@ -209,9 +209,9 @@ describe LogStash::Filters::Multiline do
     ] do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["foo"] } == "  match1\n  match1\nnomatch1"
-      insist { subject[0]["message"] } == ["bar", "baz"]
-      insist { subject[1]["foo"] } == "  1match2\n  2match2\n  1match2\nnomatch2"
+      insist { subject[0].get("foo") } == "  match1\n  match1\nnomatch1"
+      insist { subject[0].get("message") } == ["bar", "baz"]
+      insist { subject[1].get("foo") } == "  1match2\n  2match2\n  1match2\nnomatch2"
     end
   end
 
@@ -241,7 +241,7 @@ describe LogStash::Filters::Multiline do
     sample messages do
       expect(subject).to be_a(Array)
       insist { subject.size } == 2
-      insist { subject[0]["message"] } == messages[0..-2].join("\n")
+      insist { subject[0].get("message") } == messages[0..-2].join("\n")
     end
   end
 
@@ -260,10 +260,10 @@ describe LogStash::Filters::Multiline do
 
     sample ["line1", "line2"] do
       expect(subject).to be_a(Array)
-      expect(subject[0]["@metadata"]).to include("index"=>"logstash-2015.11.19")
-      expect(subject[1]["@metadata"]).to include("index"=>"logstash-2015.11.19")
-      expect(subject[0]["@metadata"]).to include("type"=>"foo")
-      expect(subject[1]["@metadata"]).to include("type"=>"foo")
+      expect(subject[0].get("@metadata")).to include("index"=>"logstash-2015.11.19")
+      expect(subject[1].get("@metadata")).to include("index"=>"logstash-2015.11.19")
+      expect(subject[0].get("@metadata")).to include("type"=>"foo")
+      expect(subject[1].get("@metadata")).to include("type"=>"foo")
     end
   end
 
@@ -281,10 +281,10 @@ describe LogStash::Filters::Multiline do
 
     sample ["line1", "line2"] do
       expect(subject).to be_a(Array)
-      expect(subject[0]["@metadata"]).to include("index"=>"logstash-2015.11.19")
-      expect(subject[1]["@metadata"]).to include("index"=>"logstash-2015.11.19")
-      expect(subject[0]["@metadata"]).to include("type"=>"foo")
-      expect(subject[1]["@metadata"]).to include("type"=>"foo")
+      expect(subject[0].get("@metadata")).to include("index"=>"logstash-2015.11.19")
+      expect(subject[1].get("@metadata")).to include("index"=>"logstash-2015.11.19")
+      expect(subject[0].get("@metadata")).to include("type"=>"foo")
+      expect(subject[1].get("@metadata")).to include("type"=>"foo")
     end
   end
 
