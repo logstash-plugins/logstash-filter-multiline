@@ -120,22 +120,20 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   MULTILINE_TAG = "multiline"
 
+  # this filter cannot be parallelized because message order
+  # cannot be garanteed across threads, line #2 could be processed
+  # before line #1
   public
-  def initialize(config = {})
-    super
-
-    # this filter cannot be parallelized because message order
-    # cannot be garanteed across threads, line #2 could be processed
-    # before line #1
-    @threadsafe = false
-
-    # this filter needs to keep state
-    @pending = Hash.new
-  end # def initialize
+  def threadsafe?
+    false
+  end
 
   public
   def register
     require "grok-pure" # rubygem 'jls-grok'
+
+    # this filter needs to keep state
+    @pending = Hash.new
 
     @grok = Grok.new
 
