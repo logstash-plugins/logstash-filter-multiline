@@ -26,5 +26,9 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'logstash-filter-mutate'
   s.add_development_dependency 'logstash-devutils'
+
+  # input-generator and codec-json for the integration specs
+  s.add_development_dependency 'logstash-input-generator'
+  s.add_development_dependency 'logstash-codec-json'
 end
 
