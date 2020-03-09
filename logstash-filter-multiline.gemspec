@@ -26,5 +26,6 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'logstash-filter-mutate'
   s.add_development_dependency 'logstash-devutils'
+  s.add_development_dependency 'insist'
 end
 
