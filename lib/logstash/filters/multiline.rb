@@ -288,15 +288,18 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   def self.event_hash_merge!(dst, src, dups_key = nil)
     src.each do |key, svalue|
       dst[key] = if dst.has_key?(key)
-        dvalue = dst[key]
+        # Do not add timestamp if it is already in dst
+        if key != "@timestamp"
+          dvalue = dst[key]
 
-        if dvalue.is_a?(Hash) && svalue.is_a?(Hash)
-          event_hash_merge!(dvalue, svalue, dups_key)
-        else
-          v = (dups_key == key) ? Array(dvalue) + Array(svalue) : Array(dvalue) | Array(svalue)
-          # the v result is always an Array, if none of the fields were arrays and there is a
-          # single value in the array, return the value, not the array
-          dvalue.is_a?(Array) || svalue.is_a?(Array) ? v : (v.size == 1 ? v.first : v)
+          if dvalue.is_a?(Hash) && svalue.is_a?(Hash)
+            event_hash_merge!(dvalue, svalue, dups_key)
+          else
+            v = (dups_key == key) ? Array(dvalue) + Array(svalue) : Array(dvalue) | Array(svalue)
+            # the v result is always an Array, if none of the fields were arrays and there is a
+            # single value in the array, return the value, not the array
+            dvalue.is_a?(Array) || svalue.is_a?(Array) ? v : (v.size == 1 ? v.first : v)
+          end
         end
       else
         svalue
