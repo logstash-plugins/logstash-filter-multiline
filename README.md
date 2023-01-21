@@ -1,5 +1,7 @@
 # Logstash Plugin
 
+[![Travis Build Status](https://travis-ci.com/logstash-plugins/logstash-filter-multiline.svg)](https://travis-ci.com/logstash-plugins/logstash-filter-multiline)
+
 This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
 It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
@@ -53,7 +55,12 @@ gem "logstash-filter-awesome", :path => "/your/local/logstash-filter-awesome"
 ```
 - Install plugin
 ```sh
+# Logstash 2.3 and higher
+bin/logstash-plugin install --no-verify
+
+# Prior to Logstash 2.3
 bin/plugin install --no-verify
+
 ```
 - Run Logstash with your plugin
 ```sh
@@ -71,7 +78,12 @@ gem build logstash-filter-awesome.gemspec
 ```
 - Install the plugin from the Logstash home
 ```sh
-bin/plugin install /your/local/plugin/logstash-filter-awesome.gem
+# Logstash 2.3 and higher
+bin/logstash-plugin install --no-verify
+
+# Prior to Logstash 2.3
+bin/plugin install --no-verify
+
 ```
 - Start Logstash and proceed to test the plugin
 

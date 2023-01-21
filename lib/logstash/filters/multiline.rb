@@ -17,15 +17,15 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "type"
 #         pattern => "pattern, a regexp"
 #         negate => boolean
 #         what => "previous" or "next"
 #       }
 #     }
 #
-# The `pattern` should be a regexp which matches what you believe to be an indicator
-# that the field is part of an event consisting of multiple lines of log data.
+# The `pattern` should be a regexp (<<plugins-filters-grok,grok>> patterns are
+# supported) which matches what you believe to be an indicator that the field
+# is part of an event consisting of multiple lines of log data.
 #
 # The `what` must be `previous` or `next` and indicates the relation
 # to the multi-line event.
@@ -39,7 +39,6 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "somefiletype"
 #         pattern => "^\s"
 #         what => "previous"
 #       }
@@ -51,7 +50,6 @@ require "set"
 # [source,ruby]
 #     filter {
 #       multiline {
-#         type => "somefiletype "
 #         pattern => "\\$"
 #         what => "next"
 #       }
@@ -70,7 +68,9 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   # Allow duplcate values on the source field.
   config :allow_duplicates, :validate => :boolean, :default => true
 
-  # The regular expression to match.
+  # The expression to match. The same matching engine as the
+  # <<plugins-filters-grok,grok filter>> is used, so the expression can contain
+  # a plain regular expression or one that also contains grok patterns.
   config :pattern, :validate => :string, :required => true
 
   # If the pattern matched, does event belong to the next or previous event?
@@ -165,12 +165,10 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
 
   public
   def filter(event)
-    return unless filter?(event)
-
-    match = event[@source].is_a?(Array) ? @grok.match(event[@source].first) : @grok.match(event[@source])
+    match = event.get(@source).is_a?(Array) ? @grok.match(event.get(@source).first) : @grok.match(event.get(@source))
     match = (match && !@negate) || (!match && @negate) # add negate option
 
-    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event[@source], :match => match, :negate => @negate)
+    @logger.debug? && @logger.debug("Multiline", :pattern => @pattern, :message => event.get(@source), :match => match, :negate => @negate)
 
     multiline_filter!(event, match)
 
@@ -192,7 +190,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
     # if :final flush then select all events
     expired = @pending.inject({}) do |result, (key, events)|
       unless events.empty?
-        age = Time.now - events.first["@timestamp"].time
+        age = Time.now - events.first.get("@timestamp").time
         result[key] = events if (age >= @max_age) || options[:final]
       end
       result
@@ -209,7 +207,7 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
   end # def flush
 
   public
-  def teardown
+  def close
     # nothing to do
   end
 
@@ -228,8 +226,10 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       # this line is not part of the previous event if we have a pending event, it's done, send it.
       # put the current event into pending
       unless pending.empty?
-        tmp = event.to_hash
-        event.overwrite(merge(pending))
+        tmp           = event.to_hash_with_metadata
+        merged_events = merge(pending)
+        event.overwrite(merged_events)
+        event.set("@metadata", merged_events.get("@metadata")) # Override does not copy the metadata
         pending.clear # avoid array creation
         pending << LogStash::Event.new(tmp)
       else
@@ -253,7 +253,9 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       # if we have something in pending, join it with this message and send it.
       # otherwise, this is a new message and not part of multiline, send it.
       unless pending.empty?
-        event.overwrite(merge(pending << event))
+        merged_events = merge(pending << event)
+        event.overwrite(merged_events)
+        event.set("@metadata", merged_events.get("@metadata")) # Override does not copy the metadata
         pending.clear
       end
     end # if match
